@@ -1,26 +1,26 @@
 {
-    "id": "86AC103C",
-    "path": "~/Programming/NovaUniversity/TMPDF-project/log_return.r",
-    "project_path": "log_return.r",
+    "id": "C3B971B0",
+    "path": "~/Programming/NovaUniversity/TMPDF-project/stock_prices.r",
+    "project_path": "stock_prices.r",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": true,
-    "created": 1759062250430.0,
+    "created": 1759070815757.0,
     "source_on_save": false,
-    "relative_order": 1,
+    "relative_order": 2,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "45,69",
-        "scrollLine": "36"
+        "cursorPosition": "297,0",
+        "scrollLine": "266"
     },
     "folds": "",
-    "lastKnownWriteTime": 1759065741,
+    "lastKnownWriteTime": 1759061363,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1759070446756,
+    "last_content_update": 1759071260750,
     "read_only": false,
     "read_only_alternatives": []
 }

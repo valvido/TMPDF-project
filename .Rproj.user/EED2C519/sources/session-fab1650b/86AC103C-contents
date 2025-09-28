@@ -3,6 +3,7 @@
 # Create a folder for project-specific libraries, so that we don't need to install the packages
 #globally 
 dir.create("Rlibs", showWarnings = FALSE)
+
 # Install the missing packages in that folder
 packages <- c(
   "readr","dplyr","ggplot2","moments","tseries",

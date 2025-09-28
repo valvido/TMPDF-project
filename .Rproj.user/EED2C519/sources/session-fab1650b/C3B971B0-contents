@@ -1,0 +1,298 @@
+# --- Data loading & setup ---
+# Load adjusted prices; these are used to compute log-returns.
+
+
+# Create a folder for project-specific libraries, so that we don't need to install the packages
+#globally 
+dir.create("Rlibs", showWarnings = FALSE)
+
+# Install the missing packages in that folder (if you already have the packages this line does nothing)
+packages <- c(
+  "readr","dplyr","ggplot2","moments","tseries",
+  "randtests","trend","nortest","forecast","TTR",
+  "Kendall","broom","here","trend"
+)
+
+# Install only missing packages
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg, dependencies = TRUE)
+  }
+  library(pkg, character.only = TRUE)
+}
+
+# Tell R to use that library
+.libPaths("Rlibs")
+
+
+
+
+#set your working directory
+setwd(here::here())
+
+#df
+ko   <- read_csv(here::here("data", "KO_daily.csv"),   col_types = cols(Date = col_date())) #adjusted prices of coca-cola
+tsla <- read_csv(here::here("data", "TSLA_daily.csv"), col_types = cols(Date = col_date())) #adjusted prices of tesla
+
+# --- Descriptive statistics for Coca-Cola (Adj.Prices)  and Tesla (Adj.Prices)---
+
+#Statistics Coca-Cola
+statistics_ko <- ko %>%
+  summarise(
+    n_observations = n(),
+    start = min(Date), 
+    end = max(Date),
+    min = min(Adjusted, na.rm=TRUE), 
+    max = max(Adjusted, na.rm=TRUE), 
+    q1 = quantile(Adjusted, 0.25, na.rm=TRUE), 
+    mean = mean(Adjusted, na.rm=TRUE), 
+    q3 = quantile(Adjusted, 0.75, na.rm=TRUE), 
+    var = var(Adjusted, na.rm=TRUE), 
+    sd = sd(Adjusted, na.rm=TRUE), 
+    skewness = skewness(Adjusted, na.rm=TRUE), 
+    kurtosis = kurtosis(Adjusted, na.rm=TRUE)
+  )
+print(statistics_ko)
+# 1256 daily observations from 2020-09-22 to 2025-09-22.
+# Prices range from 41.2 to 72.8 
+# mean ≈ 56.4.
+# sd ≈ 7.6 shows moderate variability; 
+# skewness ≈ 0.17 suggests slight asymmetry.
+# Kurtosis ≈ 2.42 close to normal benchmark that is 3 so we can conclude 
+# there is no extreme tails in prices.
+
+#Statistics TESLA
+statistics_tsla <- tsla %>%
+  summarise(
+    n_observations = n(),
+    start = min(Date), 
+    end = max(Date),
+    min = min(Adjusted, na.rm=TRUE), 
+    max = max(Adjusted, na.rm=TRUE), 
+    q1 = quantile(Adjusted, 0.25, na.rm=TRUE), 
+    mean = mean(Adjusted, na.rm=TRUE), 
+    q3 = quantile(Adjusted, 0.75, na.rm=TRUE), 
+    var = var(Adjusted, na.rm=TRUE), 
+    sd = sd(Adjusted, na.rm=TRUE), 
+    skewness = skewness(Adjusted, na.rm=TRUE), 
+    kurtosis = kurtosis(Adjusted, na.rm=TRUE)
+  )
+print(statistics_tsla)
+# --- Descriptive statistics for Tesla (Adj.Prices) ---
+# 1256 daily observations from 2020-09-22 to 2025-09-22.
+# Prices range from 108 to 480 
+# mean ≈ 250.
+# sd ≈ 67.4 indicates higher volatility compared to Coca-Cola.
+# Skewness ≈ 0.55 shows moderate positive asymmetry (right tail heavier).
+# Kurtosis ≈ 3.00 aligns with normal distribution benchmark.
+
+#Time Series of Adjusted Stock Prices from 2020 to 2025
+#Tesla
+ggplot(tsla, aes(Date, Adjusted)) +
+  geom_line(color="red") +
+  labs(title="Tesla (TSLA) - Adjusted Prices", y="Adjusted Prices", x="Data") +
+  theme_minimal()
+
+#Coca-Cola
+ggplot(ko, aes(Date, Adjusted)) +
+  geom_line(color="blue") +
+  labs(title="Coca-Cola (KO) - Adjusted Prices", y="Adjusted Prices", x="Data") +
+  theme_minimal()
+# With that I wanted to vizualize the stock price evolution between 2020–2025.
+# with the purpose to observe possible long-term trends, volatility patterns,
+# and structural breaks before computing log-returns.
+
+#Wee can see that the Tesla displays a high volatility (as expected), with sharp rises and 
+#falls over time. On the other side, Coca-Cola show more stability and a smoother upward trend.
+#These differences show what we wanted to see as expected between a high-growth, hogh-risk stock  (Tesla)
+#and a more "conservative"/defensive/stable stock (Coca-cola).
+
+# Histogram of Adjusted Stock Prices from 2020 to 2025
+ggplot(tsla, aes(Adjusted)) +
+  geom_histogram(bins=40, fill="red", color="black") +
+  labs(title="Histogram for the adj. prices of Tesla", x="Adj.Prices", y="Frequency") +
+  theme_minimal()
+
+ggplot(ko, aes(Adjusted)) +
+  geom_histogram(bins=40, fill="blue", color="black") +
+  labs(title="Histogram for the adj. prices of Tesla", x="Adj.Prices", y="Frequency") +
+  theme_minimal()
+
+# The histogram of Tesla prices shows a wide spread, with prices ranging 
+# from around 100 to nearly 500, reflecting high volatility and multiple peaks, 
+# which indicates periods of sharp rises and falls. 
+# In contrast, the Coca-Cola prices are more concentrated between 40 and 75, 
+
+#In conclusion:
+#Tesla has high volatility, wide dispersion and multiple peaks (can be explained by expeculative behaviour).
+#Coca-Cola has a narrower range, more stable but has some structural shifts over the time.
+
+# Boxplot of Adjusted Stock Prices from 2020 to 2025
+ggplot(tsla, aes(y=Adjusted)) +
+  geom_boxplot(fill="red") +
+  labs(title="Boxplot - Tesla", y="Adj.Price") +
+  theme_minimal()
+
+ggplot(ko, aes(y=Adjusted)) +
+  geom_boxplot(fill="blue") +
+  labs(title="Boxplot - Coca-Cola", y="Adj.Price") +
+  theme_minimal()
+
+#Conclusions
+#Tesla shows a wider spread of values which indicates a higher volatility (as expected).
+#We can see that several outliers are presented above the upper whisker, which is consistent with the 
+#tesla sudden spike prices. we can se that the median is closer to the lower quantile, suggesting 
+# a possible assimetric distribution with more extreme values on the upper side of the distribution.
+
+#Coca-Cola has a much narrower spread of the values, which confirm that is a more stable stock than the tesla.
+#No clear outliears visible and the distribution looks more symmetric around the median.
+
+
+
+#Check tendency 
+tsla <- tsla %>% 
+  arrange(Date) %>%
+  mutate(t = row_number(),
+         logP = log(Adjusted))
+
+reg_tsla <- lm(logP~t, data=tsla)
+summary(reg_tsla)
+# The regression shows a positive and highly significant trend in Tesla’s adjusted prices (p < 2e-16).
+# The R² (~6%) is low which indicates that time alone explains little of the variability, 
+# suggesting strong short-term fluctuations despite the long-term upward tendency.
+
+plot(tsla$t, tsla$logP, type="l", main="Tesla - Log Prices with Trend")
+abline(reg_tsla, col="red")
+# The regression line suggests that Tesla’s adjusted log-prices have followed 
+# an upward trend over the observed period. Nevertheless, the frequent and 
+# substantial deviations from the fitted line indicate that the series is highly 
+# volatile, with short-term fluctuations often dominating the long-term tendency.
+
+
+ko <- ko %>%
+  arrange(Date) %>%
+  mutate(t = row_number(),
+         logP = log(Adjusted))
+
+reg_ko <- lm(logP~t,data=ko)
+summary(reg_ko)
+# The regression output for Coca-Cola shows a clear and statistically significant 
+# positive trend in the log of adjusted prices. The explanatory 
+# power of the linear model is very high (R² ≈ 0.83), meaning that the long-term 
+# upward tendency is strongly captured by the fitted line. This reflects a more 
+# stable and consistent price evolution over time, with less influence of 
+# short-term volatility compared to Tesla.
+
+plot(ko$t,ko$logP,type="l",main="Coca-Cola - Log Prices with Trend")
+abline(reg_ko,col="blue")
+# The trend line for Coca-Cola’s log-adjusted prices highlights a persistent 
+# and stable upward trajectory over the observed period. The fitted line closely 
+# follows the actual price dynamics, reinforcing the strong R² obtained in the 
+# regression. This suggests that Coca-Cola’s price evolution is well explained 
+# by a long-term growth component, contrasting with Tesla’s more irregular and 
+# volatile behavior.
+
+#Mann-Kendall Test ( to see if we have a increasing or decreasing tendency)
+
+#H0:There is no monotonic trend (i.e the series is independent and randomly ordered).
+#H1:There is a monotonic trend (either upward or downward).
+
+mk_tsla <- MannKendall(tsla$logP)
+print(mk_tsla) #pvalue =< 2.22e-16
+
+mk_ko <- MannKendall(ko$logP)
+print(mk_ko) #pvalue =< 2.22e-16
+
+#Conclusion 
+#Since both p-values are smaller than 2.22e-16, the null hypothesis H_0 of 
+#no monotonic trend is strongly rejected. This provides strong 
+#statistical evidence that both time series exhibit a monotonic 
+#trend (either upward or downward).
+
+# Analysis of the volatility
+tsla <- tsla %>% 
+  arrange(Date) %>%
+  mutate(
+    dP = abs(Adjusted-lag(Adjusted)), #Absolute daily price change
+    dP_ma20 = SMA(dP,n=20)            # Simple moving average of the prices (20 days)
+  )
+
+ggplot(tsla,aes(x=Date,y=dP_ma20))+
+  geom_line(color="red")+
+  labs(title="Tesla volatility",x="Date",y="Average absolute change (20 days)")+
+  theme_minimal()
+
+ko <- ko %>% 
+  arrange(Date) %>% 
+  mutate(
+    dP = abs(Adjusted-lag(Adjusted)),  #Absolute daily price change
+    dP_ma20 = SMA(dP,n=20)            # Simple moving average of the prices (20 days)
+  )
+
+ggplot(ko,aes(x=Date,y=dP_ma20))+
+  geom_line(color="blue")+
+  labs(title="Coca-Cola volatilty",x="Date",y="Average absolute change (20 days)")+
+  theme_minimal()
+
+# We can conclude that Tesla exhibits strong fluctuations with several sharp peaks, 
+#reflecting its higher market risk and more speculative trading behavior.
+#In contrast, Coca-Cola’s volatility is much lower and 
+# more stable, consistent with its profile as a defensive stock. 
+# Overall, this comparison highlights that Tesla carries higher short-term uncertainty, while 
+# Coca-Cola shows steadier performance over time.
+
+
+#Test independecy of the adj.prices
+
+# Tesla
+Box.test(tsla$Adjusted, lag = 20, type = "Ljung-Box") #H0:The series is independently distributed (no autocorrelation up to lag 20 in this case)
+runs.test(tsla$Adjusted) # H0: The series is random (observations are independent)
+# Given that the p-value for both tests is <= 2.2e-16, we have strong evidence 
+# to reject the null hypothesis. Therefore, we conclude that there is statistical 
+# evidence that our adjusted price data is not independent.
+
+#Graphical analysis 
+acf(tsla$Adjusted,lag.max=20,main="Tesla - ACF") #auto-correlation plot
+pacf(tsla$Adjusted, lag.max=20,main="Telsa - PACF") #partial auto-correlation plot
+# ACF shows strong autocorrelation up to lag 20, meaning prices are highly dependent on past values.  
+# PACF shows a strong spike at lag 1, indicating that the main direct dependency 
+#is between today’s price and yesterday’s price.  
+
+# Coca-Cola
+Box.test(ko$Adjusted, lag = 20, type = "Ljung-Box") #H0:The series is independently distributed (no autocorrelation up to lag 20 in this case)
+runs.test(ko$Adjusted) # H0: The series is random (observations are independent)
+# Both the Ljung-Box test and the Runs test return p-values < 2.2e-16.  
+# This means we reject the null hypotheses of independence (Ljung-Box) and randomness (Runs).  
+
+#Graphical test
+acf(ko$Adjusted, lag.max=20,main="Coca-Cola - ACF")
+pacf(ko$Adjusted, lag.max=20,main="Coca-Cola - PACF")
+# Both the ACF and PACF shows that theres is a strong autocorrelation. 
+# The ACF remains high across lags, indicating strong dependence on past values. 
+# The PACF shows a dominant first lag, meaning most of the dependence comes from 
+# the immediate previous value. This confirms that the series is not independent.
+
+#Test if the data is identically distributed
+
+#tesla
+adf.test(tsla$Adjusted)     # H0: tesla has or not unit root -> if yes then it is non-stationary
+kpss.test(tsla$Adjusted)    # H0: tesla is stationary (so we can conclude that it is id)
+pp.test(tsla$Adjusted)      # H0: the series has unit root -> it is non-stationary
+pettitt.test(tsla$Adjusted)  # H0: check if there is change in distribution over the time or not
+
+# ADF test: p = 0.2987 → fail to reject H0 → series likely non-stationary
+# KPSS test: p = 0.01 → reject H0 → series is non-stationary
+# PP test: p = 0.3599 → fail to reject H0 → series likely non-stationary
+# Pettitt test: p < 2.2e-16 → reject H0 → change point detected (data not identically distributed)
+
+#coca-cola
+adf.test(ko$Adjusted)     # H0: coca-cola has or not unit root -> if yes then it is non-stationary
+kpss.test(ko$Adjusted)    # H0: coca-cola is stationary (so we can conclude that it is id)
+pp.test(ko$Adjusted)      # H0: the series has unit root -> it is non-stationary
+pettitt.test(ko$Adjusted)  # H0: check if there is change in distribution over the time or not
+
+# ADF test: p = 0.0884 → fail to reject H0 → series likely non-stationary
+# KPSS test: p = 0.01 → reject H0 → series is non-stationary
+# PP test: p = 0.0731 → fail to reject H0 → series likely non-stationary
+# Pettitt test: p < 2.2e-16 → reject H0 → change point detected (data not identically distributed)
+
