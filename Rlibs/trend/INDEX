@@ -1,0 +1,29 @@
+PagesData               Simulated data of Page (1955) as test-example
+                        for change-point detection
+bartels.test            Bartels Test for Randomness
+br.test                 Buishand Range Test for Change-Point Detection
+bu.test                 Buishand U Test for Change-Point Detection
+cs.test                 Cox and Stuart Trend Test
+csmk.test               Correlated Seasonal Mann-Kendall Test
+hcb                     Monthly concentration of particle bound HCB,
+                        River Rhine
+lanzante.test           Lanzante's Test for Change Point Detection
+maxau                   Annual suspended sediment concentration and
+                        flow data, River Rhine
+mk.test                 Mann-Kendall Trend Test
+mult.mk.test            Multivariate (Multisite) Mann-Kendall Test
+partial.cor.trend.test
+                        Partial Correlation Trend Test
+partial.mk.test         Partial Mann-Kendall Trend Test
+pettitt.test            Pettitt's Test for Change-Point Detection
+plot.cptest             Plotting cptest-objects
+rrod.test               Robust Rank-Order Distributional Test
+sea.sens.slope          Seasonal Sen's Slope
+sens.slope              Sen's slope
+smk.test                Seasonal Mann-Kendall Trend Test
+snh.test                Standard Normal Homogeinity Test (SNHT) for
+                        Change-Point Detection
+summary.smktest         Object summaries
+wm.test                 Wallis and Moore Phase-Frequency Test
+ww.test                 Wald-Wolfowitz Test for Independence and
+                        Stationarity

@@ -1,0 +1,449 @@
+%\VignetteIndexEntry{Trend package}
+%\VignetteDepends{trend}
+%\VignetteKeywords{non-parametric tests}
+%\VignettePackage{trend}
+%\documentclass[a4paper]{amsart}
+%\documentclass[a4paper]{article}
+\documentclass[a4paper]{scrartcl}
+\usepackage{Sweave}
+\usepackage[utf8]{inputenc}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{amsmath}
+\DeclareMathOperator{\sgn}{sgn}
+\DeclareMathOperator{\Median}{Median}
+%\SweaveOpts{concordance=TRUE}
+
+\title{Non-Parametric Trend Tests and Change-Point Detection}
+\author{Thorsten Pohlert}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+\bibliographystyle{jss}
+%\bibliographystyle{elsarticle-harv}
+
+\maketitle
+\begin{small}
+{\copyright} Thorsten Pohlert. This work is licensed under a Creative Commons License (CC BY-ND 4.0). See \url{http://creativecommons.org/licenses/by-nd/4.0/} for details.
+\newline
+For citation please see \texttt{citation(package="trend")}.
+\end{small}
+
+
+\tableofcontents
+
+\section{Trend detection}
+
+\subsection{Mann-Kendall Test}
+The non-parametric Mann-Kendall test is commonly employed to detect monotonic trends in series of environmental data, climate data or hydrological data. The null hypothesis, $H_0$, is that the data 
+come from a population with independent realizations and are identically distributed. The alternative hypothesis, $H_A$, is that the data follow a monotonic trend. The Mann-Kendall test statistic is calculated according to :
+
+\begin{equation}
+S = \sum_{k = 1}^{n-1} \sum_{j = k + 1}^n \sgn\left(X_j - X_k\right)
+\end{equation}
+
+with
+
+\begin{equation}
+\sgn(x) = \left\{ \begin{matrix}
+            1 &  \text{if} & x > 0 \\
+            0 &  \text{if} & x = 0 \\
+            -1 &  \text{if} & x < 0 
+            \end{matrix} \right.
+\end{equation}
+
+The mean of $S$ is $E[S] = 0$ and the variance $\sigma^2$ is
+
+\begin{equation}
+\sigma^2 = \left\{n \left(n-1\right)\left(2n+5\right) - \sum_{j=1}^p t_j\left(t_j - 1\right)\left(2t_j+5\right) \right\} / 18
+\end{equation}
+
+where $p$ is the number of the tied groups in the data set and $t_j$ is the number of data points in the $j$th tied group. The statistic $S$ is approximately normal distributed provided that the following Z-transformation is employed:
+
+\begin{equation}
+Z = \left\{ \begin{matrix}
+     \frac{S-1}{\sigma} &\text{if} & S > 0 \\
+     0 &\text{if} & S = 0 \\
+     \frac{S+1}{\sigma} &\text{if} & S > 0
+ \end{matrix}\right.
+\end{equation}
+
+The statistic $S$ is closely related to Kendall's $\tau$ as given by:
+\begin{equation}
+\tau = \frac{S}{D}
+\end{equation}
+
+where
+
+\begin{equation}
+D = \left[\frac{1}{2}n\left(n-1\right)- 
+     \frac{1}{2}\sum_{j=1}^p t_j\left(t_j - 1\right)\right]^{1/2}
+    \left[\frac{1}{2}n\left(n-1\right) \right]^{1/2}
+\end{equation}
+
+The univariate Mann-Kendall test is envoked as folllows:
+
+<<>>=
+require(trend)
+data(maxau)
+Q <- maxau[,"Q"]
+mk.test(Q)
+@
+
+\subsection{Seasonal Mann-Kendall Test}
+
+The Mann-Kendall statistic for the $g$th season is calculated as:
+
+\begin{equation}
+S_g = \sum_{i = 1}^{n-1} \sum_{j = i + 1}^n \sgn\left(X_{jg} - X_{ig}\right), ~~ g = 1,2, \ldots, m
+\end{equation}
+
+According to \citet{Hirsch_et_al_1982}, the seasonal Mann-Kendall statistic, $\hat{S}$, for the entire series is calculated according to 
+
+\begin{equation}
+\hat{S} = \sum_{g = 1}^m S_g
+\end{equation}
+
+For further information, the reader is referred to \citet[p. 866-869]{Hipel_McLoed_1994} and \citet{Hirsch_et_al_1982}.
+The seasonal Mann-Kendall test ist conducted as follows:
+
+<<>>=
+require(trend)
+smk.test(nottem)
+@
+
+Only the temperature data in Nottingham for August ($S=80$, $p = 0.009$) as well as for September ($S=67$, $p=0.029$) show a significant ($p < 0.05$) positive trend according to the seasonal Mann-Kendall test. Thus, the global trend for the entire series is significant ($S=224$, $p = 0.036$).
+
+\subsection{Correlated Seasonal Mann-Kendall Test}
+The correlated seasonal Mann-Kendall test can be employed, if the data are coreelated with e.g. the pre-ceeding months. For further information the reader is referred to \citet[p. 869-871]{Hipel_McLoed_1994}.
+
+<<>>=
+require(trend)
+csmk.test(nottem)
+@
+
+\subsection{Multivariate Mann-Kendall Test}
+\citet{Lettenmeier_1988} extended the Mann-Kendall test for trend to a multivariate or multisite trend test. In this package the formulation of \citet{Libiseller_Grimvall_2002} is used for the test.
+
+Particle bound Hexacholorobenzene (HCB, $\mu$g kg$^-1$) was monthly measured 
+in suspended matter at six monitoring sites along the river 
+strech of the River Rhine \citep{Pohlert_2011}. The below code-snippet tests for trend
+of each site and for the global trend at the multiple sites.
+
+<<fig=TRUE>>=
+require(trend)
+data(hcb)
+plot(hcb)
+@ 
+
+<<>>=
+## Single site trends
+site <- c("we", "ka", "mz", "ko", "bh", "bi")
+for (i in 1:6) {print(site[i]) ; print(mk.test(hcb[,site[i]], continuity = TRUE))}
+## Regional trend (all stations including covariance between stations
+mult.mk.test(hcb)
+@ 
+
+\subsection{Partial Mann-Kendall Test}
+
+This test can be conducted in the presence of co-variates. For full information, the reader is referred to \citet{Libiseller_Grimvall_2002}. 
+
+We assume a correlation between concentration of suspended sediments ($s$) and flow at Maxau.
+
+<<>>=
+data(maxau)
+s <- maxau[,"s"]; Q <- maxau[,"Q"]
+cor.test(s,Q, meth="spearman")
+@
+
+As $s$ is significantly positive related to flow, the partial Mann-Kendall test can be employed as follows. 
+
+<<>>=
+require(trend)
+data(maxau)
+s <- maxau[,"s"]; Q <- maxau[,"Q"]
+partial.mk.test(s,Q)
+@
+
+The test indicates a highly significant decreasing trend ($S=-350.7$, $p < 0.001$) of $s$, when $Q$ is partialled out.
+
+\subsection{Partial correlation trend test}
+This test performs a partial correlation trend test with either the
+     Pearson's or the Spearman's correlation coefficients (r(tx.z)). The magnitude of the linear / monotonic trend with time is computed while the impact of the co-variate is partialled out.
+
+<<>>=
+require(trend)
+data(maxau)
+s <- maxau[,"s"]; Q <- maxau[,"Q"]
+partial.cor.trend.test(s,Q, "spearman")
+@
+
+Likewise to the partial Mann-Kendall test, the partial correlation trend test using Spearman's correlation coefficient indicates a highly significant decreasing trend ($r_{S(ts.Q)} = -0.536$, $n=45$, $p <0.001$) of $s$ when $Q$ is partialled out.
+
+\subsection{Cox and Stuart Trend Test}
+The non-parametric Cox and Stuart Trend test tests 
+the first third of the series with the last third for trend.
+
+<<>>=
+## Example from Schoenwiese (1992, p. 114)
+## Number of frost days in April at Munich from 1957 to 1968
+## z = -0.5, Accept H0
+frost <- ts(data=c(9,12,4,3,0,4,2,1,4,2,9,7), start=1957)
+cs.test(frost)
+     
+## Example from Sachs (1997, p. 486-487)
+## z ~ 2.1, Reject H0 on a level of p = 0.0357
+x <- c(5,6,2,3,5,6,4,3,7,8,9,7,5,3,4,7,3,5,6,7,8,9)
+cs.test(x)
+@ 
+
+\section{Magnitude of trend}
+
+\subsection{Sen's slope}
+   This test computes both the slope (i.e. linear rate of change) and
+     intercept according to Sen's method. First, a set of linear slopes
+     is calculated as follows:
+
+\begin{equation}
+                         d_k = \frac{X_j - X_i}{j - i}              
+\end{equation}     
+     for $(1 \leq i < j \leq n)$, where $d$ is the slope, $X$ denotes the
+     variable, $n$ is the number of data, and $i$, $j$ are indices.
+
+     Sen's slope is then calculated as the median from all slopes: $b = \Median d_k$. 
+     The intercepts are computed for each timestep $t$ as
+     given by
+
+\begin{equation}
+                               a_t = X_t - b * t                      
+ \end{equation}    
+     and the corresponding intercept is as well the median of all
+     intercepts.
+
+     This function also computes the upper and lower confidence limits
+     for sens slope.
+
+<<>>=
+require(trend)
+s <- maxau[,"s"]
+sens.slope(s)
+@
+
+
+
+\subsection{Seasonal Sen's slope}
+
+Acccording to \citet{Hirsch_et_al_1982} the seasonal Sen's slope is calculated as follows:
+
+\begin{equation}
+d_{ijk} = \frac{X_{ij} - x_{ik}}{j - k}
+\end{equation}
+
+for each $(x_{ij}, x_{ik}$ pair $i = 1,2, \ldots,m$, where $1 \leq k < j \leq n_i$ and $n_i$ is the number of known values in the $i$th season. The seasonal slope estimator is the median of the $d_{ijk}$ values.
+
+<<>>=
+require(trend)
+sea.sens.slope(nottem)
+@
+
+\section{Change-point detection}
+
+\subsection{Pettitt's test}
+
+The approach after \citet{Pettitt_1979} is commonly applied to detect a single change-point in hydrological series or climate series with continuous data. It tests the $H_0$: The T variables follow one or more distributions that have the same location parameter (no change), against the alternative: a change point exists. The non-parametric statistic is defined as:
+
+\begin{equation}
+K_T = \max \left| U_{t,T}\right|,
+\end{equation}
+
+where
+
+\begin{equation}
+U_{t,T} = \sum_{i=1}^t \sum_{j = t + 1}^T \sgn\left(X_i - X_j \right)
+\end{equation}
+
+
+The change-point of the series is located at $K_T$, provided that the statistic is significant. The significance probability of $K_T$ is approximated for $p \leq 0.05$ with
+
+\begin{equation}
+p \simeq 2 ~ \exp\left(\frac{-6 ~ K_T^2}{T^3 + T^2} \right)
+\end{equation}
+
+The Pettitt-test is conducted in such a way:
+<<>>=
+require(trend)
+data(PagesData)
+pettitt.test(PagesData)
+@
+
+As given in the publication of \citet{Pettitt_1979} the change-point of Page's data is located at $t=17$, with $K_T = 232$ and $p = 0.014$.
+
+\subsection{Buishand Range Test}
+Let $X$ denote a normal random variate, then the following model
+with a single shift (change-point) can be proposed:
+
+\begin{equation}\label{eq:brt:hyp}
+  x_i = \left\{
+  \begin{array}{lcl}
+    \mu + \epsilon_i, & \qquad & i = 1, \ldots, m \\
+    \mu + \Delta + \epsilon_i & \qquad & i = m + 1, \ldots, n \\
+  \end{array} \right.
+\end{equation}
+
+$\epsilon \approx N(0,\sigma)$. The null hypothesis $\Delta = 0$
+is tested against the alternative $\Delta \ne 0$.
+
+In the Buishand range test \citep{Buishand_1982}, the 
+rescaled adjusted partial sums are calculated as
+
+\begin{equation}\label{eq:brt:sk}
+  S_k = \sum_{i=1}^k \left(x_i - \hat{x}\right) \qquad (1 \le i \le n)
+\end{equation}
+
+The test statistic is calculated as:
+
+\begin{equation}
+  Rb = \frac{\max S_k - \min S_k}{\sigma}
+\end{equation}
+
+the p.value is estimated with a Monte Carlo simulation
+using m replicates.
+
+<<>>=
+require(trend)
+(res <- br.test(Nile))
+@ 
+
+<<fig=TRUE>>=
+par(mfrow=c(2,1))
+plot(Nile); plot(res)
+@ 
+
+\subsection{Buishand U Test}
+
+In the Buishand U Test \citep{Buishand_1984}, the null hypothesis is the same as in the Buishand Range Test (see Eq. \ref{eq:brt:hyp}). The test statistic is
+
+\begin{equation}
+  U = \left[n \left(n + 1 \right) \right]^{-1} \sum_{k=1}^{n-1} 
+  \left(S_k / D_x \right)^2
+\end{equation}
+
+with
+
+\begin{equation}
+  D_x = \sqrt{n^{-1} \sum_{i=1}^n \left(x_i - \bar{x}\right)}
+\end{equation}
+
+and $S_k$ as given in Eq. \ref{eq:brt:sk}. The p.value is estimated with a Monte Carlo simulation
+using m replicates.
+
+<<>>=
+require(trend)
+(res <- bu.test(Nile))
+@ 
+
+<<fig=TRUE>>= 
+par(mfrow=c(2,1))
+plot(Nile); plot(res)
+@ 
+
+\subsection{Standard Normal Homogeinity Test}
+In the Standard Normal Homogeinity Test \citep{Alexandersson_1982}, the null hypothesis is the same as in the Buishand Range Test (see Eq. \ref{eq:brt:hyp}). The test statistic is
+
+\begin{equation}
+  T_k = k z_1^2 + \left(n - k\right) z_2^2 \qquad (1 \le k < n)
+\end{equation}
+
+where
+
+\begin{equation}
+  \begin{array}{l l}
+    z_1 = \frac{1}{k} \sum_{i=1}^k \frac{x_i - \bar{x}}{\sigma} &
+    z_2 = \frac{1}{n-k} \sum_{i=k+1}^n \frac{x_i - \bar{x}}{\sigma}. \\
+  \end{array}
+\end{equation}
+
+The critical value is:
+
+\begin{equation}
+  T = \max T_k
+\end{equation}
+
+The p.value is estimated with a Monte Carlo simulation
+using m replicates.
+
+<<>>=
+require(trend)
+(res <- snh.test(Nile))
+@ 
+
+<<fig=TRUE>>=
+par(mfrow=c(2,1))
+plot(Nile); plot(res)
+@
+
+\section{Randomness}
+\subsection{Wallis and Moore phase-frequency test}
+
+A phase frequency test was proposed by \citet{Wallis_Moore_1941} and 
+is used for testing a series for randomness:
+
+<<>>=
+## Example from Schoenwiese (1992, p. 113)
+## Number of frost days in April at Munich from 1957 to 1968
+## z = -0.124, Accept H0
+frost <- ts(data=c(9,12,4,3,0,4,2,1,4,2,9,7), start=1957)
+wm.test(frost)
+     
+## Example from Sachs (1997, p. 486)
+## z = 2.56, Reject H0 on a level of p < 0.05
+x <- c(5,6,2,3,5,6,4,3,7,8,9,7,5,3,4,7,3,5,6,7,8,9)
+wm.test(x)
+@ 
+
+\subsection{Bartels test for randomness}
+\citet{Bartels_1982} has proposed a rank version of von Neumann's ratio
+test for testing a series for randomness:
+
+<<>>=
+## Example from Schoenwiese (1992, p. 113)
+## Number of frost days in April at Munich from 1957 to 1968
+## 
+frost <- ts(data=c(9,12,4,3,0,4,2,1,4,2,9,7), start=1957)
+bartels.test(frost)
+
+## Example from Sachs (1997, p. 486)
+x <- c(5,6,2,3,5,6,4,3,7,8,9,7,5,3,4,7,3,5,6,7,8,9)
+bartels.test(x)
+     
+## Example from Bartels (1982, p. 43)
+x <- c(4, 7, 16, 14, 12, 3, 9, 13, 15, 10, 6, 5, 8, 2, 1, 11, 18, 17)
+bartels.test(x)
+@
+
+\subsection{Wald-Wolfowitz test for stationarity and independence}
+\citet{Wald_Wolfowitz_1942} have proposed a test for randomness:
+
+<<>>=
+## Example from Schoenwiese (1992, p. 113)
+## Number of frost days in April at Munich from 1957 to 1968
+## 
+frost <- ts(data=c(9,12,4,3,0,4,2,1,4,2,9,7), start=1957)
+ww.test(frost)
+
+## Example from Sachs (1997, p. 486)
+x <- c(5,6,2,3,5,6,4,3,7,8,9,7,5,3,4,7,3,5,6,7,8,9)
+ww.test(x)
+     
+## Example from Bartels (1982, p. 43)
+x <- c(4, 7, 16, 14, 12, 3, 9, 13, 15, 10, 6, 5, 8, 2, 1, 11, 18, 17)
+ww.test(x)
+@
+
+
+
+
+\bibliography{trend}
+\end{document}
+
+

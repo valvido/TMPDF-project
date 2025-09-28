@@ -1,0 +1,237 @@
+
+
+# Create a folder for project-specific libraries, so that we don't need to install the packages
+#globally 
+dir.create("Rlibs", showWarnings = FALSE)
+# Install the missing packages in that folder
+packages <- c(
+  "readr","dplyr","ggplot2","moments","tseries",
+  "randtests","trend","nortest","forecast","TTR",
+  "Kendall","broom","here"
+)
+
+# Install only missing packages
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg, dependencies = TRUE)
+  }
+  library(pkg, character.only = TRUE)
+}
+
+# Tell R to use that library
+.libPaths("Rlibs")
+
+
+#librarys that are necessary
+library(readr)
+library(dplyr)
+library(moments)
+library(ggplot2)
+library(broom)
+library(Kendall)
+library(TTR)
+library(forecast)
+library(tseries)
+library(randtests)
+library(trend)
+library(nortest)
+
+
+#set your working directory
+setwd(here::here())
+
+#log_return of the stock adjusted prices
+log_rt_ko <- read_csv("KO_log_returns.csv", col_types = cols(Data = col_date()))
+log_rt_tsla <- read_csv("TSLA_log_returns.csv", col_types = cols(Data = col_date()))
+
+#Analysis for the log of the return of the adjusted stock prices
+
+#Coca-Cola
+statistics_log_rt_ko <- log_rt_ko %>%
+  summarise(
+    n_observations = n(),
+    start = min(Data), 
+    end = max(Data),
+    min = min(log_retorno, na.rm=TRUE), 
+    max = max(log_retorno, na.rm=TRUE), 
+    q1 = quantile(log_retorno, 0.25, na.rm=TRUE), 
+    mean = mean(log_retorno, na.rm=TRUE), 
+    q3 = quantile(log_retorno, 0.75, na.rm=TRUE), 
+    var = var(log_retorno, na.rm=TRUE), 
+    sd = sd(log_retorno, na.rm=TRUE), 
+    skewness = skewness(log_retorno, na.rm=TRUE), 
+    kurtosis = kurtosis(log_retorno, na.rm=TRUE)
+  )
+print(statistics_log_rt_ko)
+
+#Tesla
+statistics_log_rt_tsla <- log_rt_tsla %>%
+  summarise(
+    n_observations = n(),
+    start = min(Data), 
+    end = max(Data),
+    min = min(log_retorno, na.rm=TRUE), 
+    max = max(log_retorno, na.rm=TRUE), 
+    q1 = quantile(log_retorno, 0.25, na.rm=TRUE), 
+    mean = mean(log_retorno, na.rm=TRUE), 
+    q3 = quantile(log_retorno, 0.75, na.rm=TRUE), 
+    var = var(log_retorno, na.rm=TRUE), 
+    sd = sd(log_retorno, na.rm=TRUE), 
+    skewness = skewness(log_retorno, na.rm=TRUE), 
+    kurtosis = kurtosis(log_retorno, na.rm=TRUE)
+  )
+print(statistics_log_rt_tsla)
+
+# Time Series for log return Tesla and KO 
+ggplot(log_rt_tsla, aes(Data, log_retorno)) +
+  geom_line(color="red") +
+  labs(title="Tesla - Log(Rt)", y="Log(Rt)", x="Data") +
+  theme_minimal()
+
+ggplot(log_rt_ko, aes(Data, log_retorno)) +
+  geom_line(color="blue") +
+  labs(title="Coca-Cola (KO) - Log(Rt)", y="Log(Rt)", x="Data") +
+  theme_minimal()
+
+
+# Histogram
+ggplot(log_rt_tsla, aes(log_retorno)) +
+  geom_histogram(bins=40, fill="red", color="black") +
+  labs(title="Histogram log return - Tesla", x="Log(Rt)", y="Frequency") +
+  theme_minimal()
+
+ggplot(log_rt_ko, aes(log_retorno)) +
+  geom_histogram(bins=40, fill="blue", color="black") +
+  labs(title="Histogram log return - Coca-Cola", x="Log(Rt)", y="Frequency") +
+  theme_minimal()
+
+# Boxplot
+ggplot(log_rt_tsla, aes(y=log_retorno)) +
+  geom_boxplot(fill="red") +
+  labs(title="Boxplot - log return Tesla", y="log(Rt)") +
+  theme_minimal()
+
+ggplot(log_rt_ko, aes(y=log_retorno)) +
+  geom_boxplot(fill="blue") +
+  labs(title="Boxplot - log return Coca-Cola", y="log(Rt)") +
+  theme_minimal()
+
+#Visualize tendency and volatility
+ggplot(log_rt_tsla, aes(x = Data, y = log_retorno)) +
+  geom_line(color = "red") +
+  labs(title = "Tesla - Log-returns over time", y = "Log-return", x = "Date") +
+  geom_smooth(method = "lm", color = "black", se = FALSE)   # linha de tendência
+
+ggplot(log_rt_ko, aes(x = Data, y = log_retorno)) +
+  geom_line(color = "blue") +
+  labs(title = "Coca-Cola - Log-returns over time", y = "Log-return", x = "Date") +
+  geom_smooth(method = "lm", color = "black", se = FALSE)
+
+#Check something to see volatility
+
+#Check independecy of the data
+
+# log_return of the tesla
+#Ljung-Box test for independence
+Box.test(log_rt_tsla$log_retorno,lag = 20, type = "Ljung-Box")
+#Wald-Wolfowitz test for independence
+runs.test(log_rt_tsla$log_retorno)
+
+#Graphical test
+acf(log_rt_tsla$log_retorno, lag.max=20,main="Log return tesla - ACF")
+pacf(log_rt_tsla$log_retorno, lag.max=20,main="Log return tesla - PACF")
+
+#we can conclude that the log returns of the tesla are independent after some lags 
+#the are dependent on the first lags of the series
+
+# log_return of the coca-cola
+#Ljung-Box test for independence
+Box.test(log_rt_ko$log_retorno,lag = 20, type = "Ljung-Box")
+#Wald-Wolfowitz test for independence
+runs.test(log_rt_ko$log_retorno)
+
+#Graphical test
+acf(log_rt_ko$log_retorno, lag.max=20,main="Log return Coca-Cola - ACF")
+pacf(log_rt_ko$log_retorno, lag.max=20,main="Log return Coca-Cola - PACF")
+
+#we can conclude that the log return of the coca-cola are independent
+
+#Test if the data is identically distributed
+#log return tesla
+adf.test(log_rt_tsla$log_retorno)     # H0: tesla has or not unit root -> if yes then it is non-stationary
+kpss.test(log_rt_tsla$log_retorno)    # H0: tesla is stationary (so we can conclude that it is id)
+pp.test(log_rt_tsla$log_retorno)      # H0: the series has unit root -> it is non-stationary
+pettitt.test(log_rt_tsla$log_retorno)  # H0: check if there is change in distribution over the time or not
+
+#with the first tree test we can conclude that the data is stationary and with 
+#the last one we can conclude that the data dont have significant break structures 
+#i.e it behave like a distribution
+#in conclusion we can say that the log return tesla behave like a sample 
+#i.e it is independent and identically distributed
+
+#log return coca-cola
+adf.test(log_rt_ko$log_retorno)     # H0: coca-cola has or not unit root -> if yes then it is non-stationary
+kpss.test(log_rt_ko$log_retorno)    # H0: coca-cola is stationary (so we can conclude that it is id)
+pp.test(log_rt_ko$log_retorno)      # H0: the series has unit root -> it is non-stationary
+pettitt.test(log_rt_ko$log_retorno)  # H0: check if there is change in distribution over the time or not
+
+#with the first tree test we can conclude that the data is stationary and with 
+#the last one we can conclude that the data dont have significant break structures 
+#i.e it behave like a distribution
+#in conclusion we can say that the log return tesla behave like a sample 
+#i.e it is independent and identically distributed
+
+#see the distribution that it follows
+
+#Normal? 
+# Tesla
+hist(log_rt_tsla$log_retorno,
+     breaks = 40,             # number of boxes of the histogram
+     col = "orange",
+     main = "Tesla - Log-retornos",
+     xlab = "Log-retorno")
+
+curve(dnorm(x, mean = mean(log_rt_tsla$log_retorno, na.rm = TRUE), 
+            sd = sd(log_rt_tsla$log_retorno, na.rm = TRUE)), 
+      add = TRUE, col = "blue", lwd = 2)
+
+# Coca-Cola
+hist(log_rt_ko$log_retorno,
+     breaks = 40,
+     col = "steelblue",
+     main = "Coca-Cola - Log-retornos",
+     xlab = "Log-retorno")
+
+curve(dnorm(x, mean = mean(log_rt_ko$log_retorno, na.rm = TRUE), 
+            sd = sd(log_rt_ko$log_retorno, na.rm = TRUE)), 
+      add = TRUE, col = "red", lwd = 2)
+
+# Tesla
+qqnorm(log_rt_tsla$log_retorno, main = "QQ-plot Tesla")
+qqline(log_rt_tsla$log_retorno, col = "red")
+
+# Coca-Cola
+qqnorm(log_rt_ko$log_retorno, main = "QQ-plot Coca-Cola")
+qqline(log_rt_ko$log_retorno, col = "red")
+
+
+# Based on the histograms and QQ-plots, the log-returns of Tesla and Coca-Cola 
+# do not "perfectly" follow a normal distribution. 
+# Both show heavier tails than expected under normality (outliers in the extremes) 
+# and slight asymmetries. 
+# Overall, the shape is approximately normal, but with excess kurtosis.
+
+#Check with non-parametric tests
+shapiro.test(log_rt_tsla$log_retorno) # Shapiro-Wilk 
+jarque.bera.test(log_rt_tsla$log_retorno) # Jarque-Bera
+ad.test(log_rt_tsla$log_retorno) # Anderson-Darling
+lillie.test(log_rt_tsla$log_retorno) # Kolmogorov-Smirnov (Lilliefors correction for estimated mean & sd)
+
+# Coca-Cola
+shapiro.test(log_rt_ko$log_retorno) # Shapiro-Wilk
+jarque.bera.test(log_rt_ko$log_retorno) # Jarque-Bera
+ad.test(log_rt_ko$log_retorno) # Anderson-Darling
+lillie.test(log_rt_ko$log_retorno)  # Kolmogorov-Smirnov
+
+#Both Tesla and Coca-Cola log-returns clearly deviate from normality,
+#as shown by formal normality tests (Shapiro-Wilk, Jarque-Bera, Anderson-Darling, Lilliefors) 
